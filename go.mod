@@ -1,9 +1,9 @@
-module github.com/antihax/goesi
+module github.com/contorno/goesi
 
 go 1.16
 
 require (
-	github.com/antihax/optional v1.0.0 // indirect
+	github.com/contorno/optional v1.0.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.1.0
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/mailru/easyjson v0.7.7

@@ -16,7 +16,7 @@ This module offers:
 ## Installation
 
 ```go
-    go get github.com/antihax/goesi
+    go get github.com/contorno/goesi
 ```
 
 ## New Client
@@ -37,7 +37,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/antihax/goesi"
+	"github.com/contorno/goesi"
 )
 
 func main() {
@@ -249,12 +249,12 @@ This is done here rather than at the client so you can use one client for many t
 ## Testing
 
 If you would rather not rely on public ESI for testing, a mock ESI server is available for local and CI use.
-Information here: https://github.com/antihax/mock-esi
+Information here: https://github.com/contorno/mock-esi
 
 ## What about the other stuff?
 
 If you need bleeding edge access, add the endpoint to the generator and rebuild this module.
-Generator is here: https://github.com/antihax/swagger-esi-goclient
+Generator is here: https://github.com/contorno/swagger-esi-goclient
 
 ## Documentation for API Endpoints
 
@@ -262,7 +262,7 @@ Generator is here: https://github.com/antihax/swagger-esi-goclient
 
 ## Author
 
-  antihax on #devfleet slack
+  contorno on #devfleet slack
 
 ## Credits
 
