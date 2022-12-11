@@ -29,7 +29,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/antihax/goesi/optional"
+	"github.com/contorno/goesi/optional"
 )
 
 // Linger please
