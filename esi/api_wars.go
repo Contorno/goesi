@@ -31,7 +31,6 @@ import (
 
 	"fmt"
 	"github.com/contorno/optional"
-	"github.com/mailru/easyjson"
 )
 
 // Linger please
