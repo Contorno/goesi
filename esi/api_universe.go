@@ -30,8 +30,8 @@ import (
 	"strings"
 
 	"fmt"
-
-	"github.com/contorno/goesi/optional"
+	"github.com/contorno/optional"
+	"github.com/mailru/easyjson"
 )
 
 // Linger please
