@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// https://community.eveonline.com/support/policies/naming-policy-en/
+// ValidCharacterName https://community.eveonline.com/support/policies/naming-policy-en/
 func ValidCharacterName(name string) bool {
 	if len(name) > 37 {
 		return false

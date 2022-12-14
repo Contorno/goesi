@@ -38,7 +38,8 @@ func (c contextKey) String() string {
 	return "auth " + string(c)
 }
 
-// ContextOAuth2 is the context for GoESI authentication. Pass a tokenSource with this key to a context for an ESI API Call
+// ContextOAuth2 is the context for GoESI authentication.
+// Pass a tokenSource with this key to a context for an ESI API Call.
 var (
 	ContextOAuth2      = esi.ContextOAuth2
 	ContextAccessToken = esi.ContextAccessToken

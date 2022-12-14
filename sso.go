@@ -5,9 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
-	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -19,10 +18,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// SSOAuthenticator provides interfacing to the EVE SSO. NewSSOAuthenticator is used to create
-// this structure.
-
-// [TODO] lose this mutex and allow scopes to change without conflict.
+// SSOAuthenticator interface for the EVE SSO.
+// SSOAuthenticator [TODO] lose this mutex and allow scopes to change without conflict.
 type SSOAuthenticator struct {
 	httpClient *http.Client
 	// Hide this...
@@ -30,7 +27,7 @@ type SSOAuthenticator struct {
 	scopeLock   sync.Mutex
 }
 
-// EVESSOClaims structure for JWT Claims
+// EVESSOClaims JWT Claims.
 type EVESSOClaims struct {
 	Name     string   `json:"name,omitempty"`
 	Owner    string   `json:"owner,omitempty"`
@@ -42,41 +39,9 @@ type EVESSOClaims struct {
 	jwt.RegisteredClaims
 }
 
-// NewSSOAuthenticator create a new EVE SSO Authenticator.
-// Requires your application clientID, clientSecret, and redirectURL.
-// RedirectURL must match exactly to what you registered with CCP.
-func NewSSOAuthenticator(client *http.Client, clientID string, clientSecret string, redirectURL string, scopes []string) *SSOAuthenticator {
-	return newSSOAuthenticator(
-		client,
-		clientID,
-		clientSecret,
-		redirectURL,
-		scopes,
-		oauth2.Endpoint{
-			AuthURL:  "https://login.eveonline.com/oauth/authorize",
-			TokenURL: "https://login.eveonline.com/oauth/token",
-		},
-	)
-}
-
-// NewSSOAuthenticatorV2 create a new EVE SSO Authenticator with the v2 urls.
-// Requires your application clientID, clientSecret, and redirectURL.
-// RedirectURL must match exactly to what you registered with CCP.
-func NewSSOAuthenticatorV2(client *http.Client, clientID string, clientSecret string, redirectURL string, scopes []string) *SSOAuthenticator {
-	return newSSOAuthenticator(
-		client,
-		clientID,
-		clientSecret,
-		redirectURL,
-		scopes,
-		oauth2.Endpoint{
-			AuthURL:  "https://login.eveonline.com/v2/oauth/authorize",
-			TokenURL: "https://login.eveonline.com/v2/oauth/token",
-		},
-	)
-}
-
-func newSSOAuthenticator(client *http.Client, clientID string, clientSecret string, redirectURL string, scopes []string, endpoint oauth2.Endpoint) *SSOAuthenticator {
+func NewSSOAuthenticator(
+	client *http.Client, clientID string, clientSecret string, redirectURL string, scopes []string,
+) *SSOAuthenticator {
 	if client == nil {
 		return nil
 	}
@@ -86,39 +51,41 @@ func newSSOAuthenticator(client *http.Client, clientID string, clientSecret stri
 	c.oauthConfig = &oauth2.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		Endpoint:     endpoint,
-		Scopes:       scopes,
-		RedirectURL:  redirectURL,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  "https://login.eveonline.com/v2/oauth/authorize",
+			TokenURL: "https://login.eveonline.com/v2/oauth/token",
+		},
+		Scopes:      scopes,
+		RedirectURL: redirectURL,
 	}
 
 	return c
 }
 
 // ChangeAuthURL changes the oauth2 configuration url for authentication
-func (c *SSOAuthenticator) ChangeAuthURL(url string) {
-	c.oauthConfig.Endpoint.AuthURL = url
+func (c *SSOAuthenticator) ChangeAuthURL(authUrl string) {
+	c.oauthConfig.Endpoint.AuthURL = authUrl
 }
 
 // ChangeTokenURL changes the oauth2 configuration url for token
-func (c *SSOAuthenticator) ChangeTokenURL(url string) {
-	c.oauthConfig.Endpoint.TokenURL = url
+func (c *SSOAuthenticator) ChangeTokenURL(tokenUrl string) {
+	c.oauthConfig.Endpoint.TokenURL = tokenUrl
 }
 
-// AuthorizeURL returns a url for an end user to authenticate with EVE SSO
+// AuthorizeURL returns an url for an end user to authenticate with EVE SSO
 // and return success to the redirectURL.
-// It is important to create a significatly unique state for this request
+// It is important to create a significantly unique state for this request
 // and verify the state matches when returned to the redirectURL.
 func (c *SSOAuthenticator) AuthorizeURL(state string, onlineAccess bool, scopes []string) string {
-	var url string
-
-	// Generate the URL
 	if onlineAccess == true {
-		url = c.oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOnline, oauth2.SetAuthURLParam("scope", strings.Join(scopes, " ")))
+		return c.oauthConfig.AuthCodeURL(
+			state, oauth2.AccessTypeOnline, oauth2.SetAuthURLParam("scope", strings.Join(scopes, " ")),
+		)
 	} else {
-		url = c.oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("scope", strings.Join(scopes, " ")))
+		return c.oauthConfig.AuthCodeURL(
+			state, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("scope", strings.Join(scopes, " ")),
+		)
 	}
-
-	return url
 }
 
 // TokenRevoke revokes a refresh token
@@ -127,26 +94,36 @@ func (c *SSOAuthenticator) TokenRevoke(refreshToken string) error {
 		"token_type_hint": {"refresh_token"},
 		"token":           {refreshToken},
 	}
-	req, err := http.NewRequest("POST", "https://login.eveonline.com/oauth/revoke", strings.NewReader(v.Encode()))
+
+	req, err := http.NewRequest("POST", "https://login.eveonline.com/v2/oauth/revoke", strings.NewReader(v.Encode()))
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	req.Header.Set("Authorization",
-		"Basic "+base64.URLEncoding.EncodeToString(
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set(
+		"Authorization", "Basic "+base64.URLEncoding.EncodeToString(
 			[]byte(c.oauthConfig.ClientID+":"+c.oauthConfig.ClientSecret),
-		))
+		),
+	)
 
 	r, err := c.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
-	defer r.Body.Close()
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1<<20))
+
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			return
+		}
+	}(r.Body)
+
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 	if err != nil {
-		return fmt.Errorf("oauth2: cannot revoke token: %v", err)
+		return err
 	}
+
 	if code := r.StatusCode; code < 200 || code > 299 {
 		return &oauth2.RetrieveError{
 			Response: r,
@@ -156,14 +133,15 @@ func (c *SSOAuthenticator) TokenRevoke(refreshToken string) error {
 	return nil
 }
 
-// TokenExchange exchanges the code returned to the redirectURL with
-// the CREST server to an access token. A caching client must be passed.
+// TokenExchange exchanges the code returned to the redirectURL for an access token.
+// A caching client must be passed.
 // This client MUST cache per CCP guidelines or face banning.
 func (c *SSOAuthenticator) TokenExchange(code string) (*oauth2.Token, error) {
 	tok, err := c.oauthConfig.Exchange(createContext(c.httpClient), code)
 	if err != nil {
 		return nil, err
 	}
+
 	return tok, nil
 }
 
@@ -184,7 +162,13 @@ type VerifyResponse struct {
 // Verify the client and collect user information.
 func (c *SSOAuthenticator) Verify(auth oauth2.TokenSource) (*VerifyResponse, error) {
 	v := &VerifyResponse{}
-	_, err := c.doJSON("GET", "https://login.eveonline.com/oauth/verify", nil, v, "application/json;", auth)
+	_, err := c.doJSON(
+		"GET",
+		"https://login.eveonline.com/oauth/verify",
+		nil,
+		v,
+		auth,
+	)
 
 	if err != nil {
 		return nil, err
@@ -193,7 +177,7 @@ func (c *SSOAuthenticator) Verify(auth oauth2.TokenSource) (*VerifyResponse, err
 }
 
 // Creates a new http.Request for a public resource.
-func (c *SSOAuthenticator) newRequest(method, urlStr string, body interface{}, mediaType string) (*http.Request, error) {
+func (c *SSOAuthenticator) newRequest(method, urlStr string, body interface{}) (*http.Request, error) {
 	rel, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
@@ -216,9 +200,11 @@ func (c *SSOAuthenticator) newRequest(method, urlStr string, body interface{}, m
 }
 
 // Calls a resource from the public CREST
-func (c *SSOAuthenticator) doJSON(method, urlStr string, body interface{}, v interface{}, mediaType string, auth oauth2.TokenSource) (*http.Response, error) {
+func (c *SSOAuthenticator) doJSON(
+	method, urlStr string, body interface{}, v interface{}, auth oauth2.TokenSource,
+) (*http.Response, error) {
 
-	req, err := c.newRequest(method, urlStr, body, mediaType)
+	req, err := c.newRequest(method, urlStr, body)
 	if err != nil {
 		return nil, err
 	}
@@ -237,8 +223,14 @@ func (c *SSOAuthenticator) doJSON(method, urlStr string, body interface{}, v int
 		return nil, err
 	}
 
-	defer res.Body.Close()
-	buf, err := ioutil.ReadAll(res.Body)
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(res.Body)
+
+	buf, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +261,7 @@ func (c *SSOAuthenticator) executeRequest(req *http.Request) (*http.Response, er
 
 // Add custom clients to the context.
 func createContext(httpClient *http.Client) context.Context {
-	parent := oauth2.NoContext
+	parent := context.Background()
 	ctx := context.WithValue(parent, oauth2.HTTPClient, httpClient)
 	return ctx
 }
