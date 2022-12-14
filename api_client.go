@@ -34,7 +34,7 @@ import (
 // Handle our context keys.
 type contextKey string
 
-func (c contextKey) String() string {
+func authString(c contextKey) string {
 	return "auth " + string(c)
 }
 
@@ -60,9 +60,9 @@ func NewAPIClient(httpClient *http.Client, userAgent string) *APIClient {
 	}
 
 	c := &APIClient{}
-
 	c.ESI = esi.NewAPIClient(httpClient, userAgent)
 	c.Meta = meta.NewAPIClient(httpClient, userAgent)
+
 	return c
 }
 
